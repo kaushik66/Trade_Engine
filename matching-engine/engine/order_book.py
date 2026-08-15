@@ -57,9 +57,13 @@ class OrderBook:
             if order.side == 'buy':
                 buy_id = order.id
                 sell_id = oldest_resting.id
+                buyer_acc = order.account_id
+                seller_acc = oldest_resting.account_id
             else:
                 buy_id = oldest_resting.id
                 sell_id = order.id
+                buyer_acc = oldest_resting.account_id
+                seller_acc = order.account_id
                 
             import uuid
             trades.append(Trade(
@@ -69,6 +73,8 @@ class OrderBook:
                 quantity=trade_qty,
                 buy_order_id=buy_id,
                 sell_order_id=sell_id,
+                buyer_account_id=buyer_acc,
+                seller_account_id=seller_acc,
                 timestamp=now_ts
             ))
             
@@ -90,6 +96,7 @@ class OrderBook:
                 side=order.side,
                 price=order.price,
                 remaining_quantity=remaining_qty,
+                account_id=order.account_id,
                 timestamp=order.timestamp
             )
             

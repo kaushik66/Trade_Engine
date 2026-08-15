@@ -19,6 +19,7 @@ class RestingOrder:
     side: Literal['buy', 'sell']
     price: int
     remaining_quantity: int
+    account_id: str
     timestamp: str
 
 @dataclass
@@ -30,4 +31,6 @@ class Trade:
     quantity: int
     buy_order_id: str
     sell_order_id: str
+    buyer_account_id: str
+    seller_account_id: str
     timestamp: str
