@@ -23,7 +23,12 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown logic (none needed for sqlite)
 
+from fastapi.staticfiles import StaticFiles
+
 app = FastAPI(lifespan=lifespan, title="Trade Engine API")
 
 app.include_router(gateway.router, prefix="/api")
 app.include_router(query.router, prefix="/api")
+
+# Mount frontend at root
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

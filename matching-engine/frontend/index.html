@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity Trade Engine</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --border-color: #334155;
+            --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        h1, h2, h3 {
+            margin: 0 0 15px 0;
+            font-weight: 600;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 16px 24px;
+            background: var(--surface-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+        }
+
+        .account-selector {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        select, input {
+            background: var(--bg-color);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .balance-display {
+            font-size: 14px;
+            color: var(--text-muted);
+            display: flex;
+            gap: 16px;
+        }
+        
+        .balance-value {
+            color: var(--text-main);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 24px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .panel {
+            background: var(--surface-color);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .order-panel {
+            flex: 1;
+        }
+
+        .book-panel {
+            flex: 1.5;
+        }
+
+        .trades-panel {
+            flex: 1;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            color: white;
+            margin-top: 8px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button.btn-buy {
+            background: var(--accent-green);
+        }
+
+        button.btn-sell {
+            background: var(--accent-red);
+        }
+
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-variant-numeric: tabular-nums;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: right;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            text-align: right;
+            color: var(--text-muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            position: sticky;
+            top: 0;
+            background: var(--surface-color);
+            z-index: 10;
+        }
+
+        td.price-green { color: var(--accent-green); }
+        td.price-red { color: var(--accent-red); }
+
+        .book-row {
+            position: relative;
+        }
+        
+        .depth-bar-green, .depth-bar-red {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            opacity: 0.15;
+            z-index: 0;
+        }
+        .depth-bar-green { background: var(--accent-green); }
+        .depth-bar-red { background: var(--accent-red); }
+
+        /* Scrolbar styling */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* Notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: var(--surface-color);
+            border-left: 4px solid var(--accent-blue);
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.error { border-left-color: var(--accent-red); }
+        .toast.success { border-left-color: var(--accent-green); }
+
+        /* Animations */
+        @keyframes flash {
+            0% { background-color: rgba(255,255,255,0.1); }
+            100% { background-color: transparent; }
+        }
+        .flash-row { animation: flash 0.5s; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="account-selector">
+            <h2>Trade Engine v1</h2>
+            <select id="accountSelect" onchange="updateAccount()">
+                <option value="alice">Alice</option>
+                <option value="bob">Bob</option>
+                <option value="stress_buyer">Stress Buyer</option>
+                <option value="stress_seller">Stress Seller</option>
+            </select>
+        </div>
+        <div class="balance-display">
+            <div>Cash: <span id="cashBalance" class="balance-value">$0.00</span></div>
+            <div>BTCUSD: <span id="btcBalance" class="balance-value">0</span></div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- Order Entry -->
+        <div class="panel order-panel">
+            <h3>Place Order</h3>
+            <div class="form-group">
+                <label>Side</label>
+                <select id="orderSide" onchange="updateButtonColor()">
+                    <option value="buy">Buy</option>
+                    <option value="sell">Sell</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Symbol</label>
+                <input type="text" id="orderSymbol" value="BTCUSD" disabled>
+            </div>
+            <div class="form-group">
+                <label>Price</label>
+                <input type="number" id="orderPrice" value="100" min="1">
+            </div>
+            <div class="form-group">
+                <label>Quantity</label>
+                <input type="number" id="orderQty" value="1" min="1">
+            </div>
+            <button id="submitBtn" class="btn-buy" onclick="submitOrder()">Submit Buy Order</button>
+        </div>
+
+        <!-- Order Book -->
+        <div class="panel book-panel">
+            <h3>Order Book (BTCUSD)</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Type</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Trade Feed -->
+        <div class="panel trades-panel">
+            <h3>Recent Trades</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Time</th>
+                            <th>Price</th>
+                            <th>Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tradesBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Message here</div>
+
+    <script>
+        const API_BASE = '/api';
+        let currentAccount = 'alice';
+        let maxBookQty = 1;
+
+        function updateButtonColor() {
+            const side = document.getElementById('orderSide').value;
+            const btn = document.getElementById('submitBtn');
+            if (side === 'buy') {
+                btn.className = 'btn-buy';
+                btn.innerText = 'Submit Buy Order';
+            } else {
+                btn.className = 'btn-sell';
+                btn.innerText = 'Submit Sell Order';
+            }
+        }
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.className = 'toast show ' + (isError ? 'error' : 'success');
+            setTimeout(() => {
+                toast.className = 'toast';
+            }, 3000);
+        }
+
+        async function updateAccount() {
+            currentAccount = document.getElementById('accountSelect').value;
+            fetchAccount();
+        }
+
+        async function fetchAccount() {
+            try {
+                const res = await fetch(`${API_BASE}/accounts/${currentAccount}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('cashBalance').innerText = '$' + (data.cash_balance).toLocaleString();
+                    document.getElementById('btcBalance').innerText = (data.holdings['BTCUSD'] || 0).toLocaleString();
+                } else if (res.status === 404) {
+                    document.getElementById('cashBalance').innerText = 'Not Found';
+                    document.getElementById('btcBalance').innerText = 'Not Found';
+                }
+            } catch (e) {
+                console.error("Error fetching account", e);
+            }
+        }
+
+        async function fetchBook() {
+            try {
+                const res = await fetch(`${API_BASE}/book/BTCUSD`);
+                if (res.ok) {
+                    const data = await res.json();
+                    renderBook(data);
+                }
+            } catch (e) {
+                console.error("Error fetching book", e);
+            }
+        }
+
+        async function fetchTrades() {
+            try {
+                const res = await fetch(`${API_BASE}/trades?symbol=BTCUSD&limit=20`);
+                if (res.ok) {
+                    const data = await res.json();
+                    renderTrades(data.trades);
+                }
+            } catch (e) {
+                console.error("Error fetching trades", e);
+            }
+        }
+
+        function renderBook(data) {
+            const tbody = document.getElementById('bookBody');
+            let html = '';
+            
+            // Calculate max qty for depth bars
+            let localMax = 1;
+            data.asks.forEach(a => localMax = Math.max(localMax, a.total_quantity));
+            data.bids.forEach(b => localMax = Math.max(localMax, b.total_quantity));
+            maxBookQty = localMax;
+
+            // Render Asks (descending price, red)
+            // Reverse so lowest ask is at bottom of ask section
+            const asks = [...data.asks].reverse();
+            asks.forEach(ask => {
+                const pct = (ask.total_quantity / maxBookQty) * 100;
+                html += `
+                <tr class="book-row">
+                    <div class="depth-bar-red" style="width: ${pct}%"></div>
+                    <td style="text-align: left; color: var(--text-muted)">Ask</td>
+                    <td class="price-red">${ask.price.toLocaleString()}</td>
+                    <td>${ask.total_quantity.toLocaleString()}</td>
+                </tr>`;
+            });
+
+            // Render Bids (descending price, green)
+            data.bids.forEach(bid => {
+                const pct = (bid.total_quantity / maxBookQty) * 100;
+                html += `
+                <tr class="book-row">
+                    <div class="depth-bar-green" style="width: ${pct}%"></div>
+                    <td style="text-align: left; color: var(--text-muted)">Bid</td>
+                    <td class="price-green">${bid.price.toLocaleString()}</td>
+                    <td>${bid.total_quantity.toLocaleString()}</td>
+                </tr>`;
+            });
+
+            if (html === '') {
+                html = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted)">Order book empty</td></tr>';
+            }
+            tbody.innerHTML = html;
+        }
+
+        let lastTradeId = null;
+        function renderTrades(trades) {
+            const tbody = document.getElementById('tradesBody');
+            let html = '';
+            
+            trades.forEach((t, i) => {
+                const date = new Date(t.timestamp);
+                const timeStr = `${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}:${date.getSeconds().toString().padStart(2,'0')}`;
+                
+                // Add flash animation to new trades
+                const isNew = i === 0 && lastTradeId !== t.trade_id;
+                
+                html += `
+                <tr class="${isNew ? 'flash-row' : ''}">
+                    <td style="text-align: left; color: var(--text-muted); font-size: 12px;">${timeStr}</td>
+                    <td>${t.price.toLocaleString()}</td>
+                    <td>${t.quantity.toLocaleString()}</td>
+                </tr>`;
+            });
+            
+            if (trades.length > 0) lastTradeId = trades[0].trade_id;
+            
+            if (html === '') {
+                html = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted)">No trades yet</td></tr>';
+            }
+            tbody.innerHTML = html;
+        }
+
+        async function submitOrder() {
+            const side = document.getElementById('orderSide').value;
+            const price = parseInt(document.getElementById('orderPrice').value);
+            const qty = parseInt(document.getElementById('orderQty').value);
+
+            const payload = {
+                account_id: currentAccount,
+                side: side,
+                symbol: "BTCUSD",
+                price: price,
+                quantity: qty
+            };
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+
+            try {
+                const res = await fetch(`${API_BASE}/orders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok) {
+                    showToast(`Order accepted. Fills: ${data.fills.length}, Remaining: ${data.remaining_quantity}`);
+                    // Trigger immediate refresh
+                    pollData();
+                } else {
+                    showToast(`Error: ${data.detail?.error || 'Unknown error'}`, true);
+                }
+            } catch (e) {
+                showToast("Network error submitting order", true);
+            } finally {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+        }
+
+        function pollData() {
+            fetchAccount();
+            fetchBook();
+            fetchTrades();
+        }
+
+        // Initialize
+        updateButtonColor();
+        pollData();
+        setInterval(pollData, 2000); // Poll every 2 seconds
+
+    </script>
+</body>
+</html>
